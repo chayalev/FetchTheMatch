@@ -184,7 +184,6 @@ app.post('/uploadCV', uploadAndAttachPath, async (req, res) => {
 
     try {
         const result = await generateContentFromPDF(filePath, jobDescription, prompt);
-        console.log("prompt:::::::::::::: ", prompt)
         //add option to return a pdf aspdf astext (switch(resptype))
         switch (req.body.resptype) {
             case 'aspdf':
@@ -258,6 +257,53 @@ app.post('/existingtexttopdf', async (req, res) => {
 
 //==================================================
 
+//Search jobs on SerpApi based on skills and location
+async function searchJobs(skills, location) {
+    const apiKey = `${process.env.API_KEY}`;
+
+    try {
+
+        // Fetch request to SerpApi
+        const response = await fetch(`https://serpapi.com/search?engine=google_jobs&q=${encodeURIComponent(skills.join(', '))}&location=${encodeURIComponent(location)}&api_key=${apiKey}`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        //Response
+        const data = await response.json();
+        const jobResults = data.jobs_results;
+
+        //Filtered the fields
+        const filteredJobs = jobResults.map(job => ({
+            title: job.title,
+            company_name: job.company_name,
+            description: job.description,
+            url: job.share_link || "" // add link if exists
+        }));
+        return filteredJobs;
+
+    } catch (error) {
+        console.error('Error searching jobs:', error.message);
+        throw error;
+    }
+}
+
+// Route for posting job search requests
+app.post('/jobsFromSkillsListSerpApi', async (req, res) => {
+
+    //Get the specific skills
+    const skills = req.body.skills;
+    const country = "new york";
+    try {
+        const jobs = await searchJobs(skills, country);
+
+        //Return results & receives skills
+        res.json({ skills: skills, jobs: jobs });
+    } catch (error) {
+        res.status(500).json({ error: 'error while searching'});
+    }
+});
 
 app.use(express.static('public'));
 //=========================

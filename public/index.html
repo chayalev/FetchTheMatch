@@ -57,97 +57,104 @@
                 <input type="radio" name="resptype" value="astext"> Text
             </label>
             <label>
-                <input type="radio" name="resptype" value="skillslist"> List of Skills
+                <input type="radio" name="resptype" value="skillslist"> Search jobs
             </label>
+
         </div>
 
         <button type="submit">Upload PDF</button>
     </form>
+    <!-- <button type="button" onclick="fetchJobs()">Search for</button> -->
     <div>
-    <div id="cover-letter">
+        <div id="cover-letter">
 
+        </div>
+        <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button>
+        <button type="button" onclick="printCoverLetter()">Print Cover Letter</button>
     </div>
-    <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button>
-<button type="button" onclick="printCoverLetter()">Print Cover Letter"></button>
-</div>
-
+    <div id="jobs-list"></div>
     <script>
-
-function copyToClipboard() {
-        const coverLetterText = document.getElementById('cover-letter').textContent;
-        navigator.clipboard.writeText(coverLetterText).then(() => {
-            alert("Cover letter copied to clipboard.");
-        }).catch((error) => {
-            console.error("Failed to copy text:", error);
-        });
-    }
-
-    // Print content
-    function printCoverLetter() {
-        const printWindow = window.open('', '_blank');
-        const coverLetterText = document.getElementById('cover-letter').textContent;
-        
-        printWindow.document.open();
-        printWindow.document.write(`
-            <html>
-            <head><title>Print Cover Letter</title></head>
-            <body>
-                <pre>${coverLetterText}</pre>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-    }
-        async function uploadCV(file, jobDescription, resptype) {
+        const getSkillsList = (file, jobDescription, resptype) => {
             const formData = new FormData();
             formData.append('pdfFile', file);
             formData.append('jobDescription', jobDescription);
             formData.append('resptype', resptype);
-
-            try {
-                const response = await fetch('/uploadCV', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (resptype === 'aspdf') {
-                    if (response.ok) {
-                        const blob = await response.blob();
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = 'CoverLetter.pdf';
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-                        URL.revokeObjectURL(url);
-                    } else {
-                        console.error("Failed to download PDF.");
-                    }
-                } else if (resptype === 'astext') {
-                    const data = await response.json();
-                    document.getElementById('cover-letter').textContent = data.content;
-                }
-            } catch (error) {
-                console.error("Error uploading CV:", error);
-            }
-        }
-
+    
+            return fetch('/uploadCV', {
+                method: 'POST',
+                body: formData,
+            });
+        };
+    
+        const getJobsList = (skills) => {
+            return fetch('/jobsFromSkillsListSerpApi', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ skills }) // Send skills array as JSON
+            });
+        };
+    
         const form = document.getElementById('pdf-form');
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
-
+    
             const formData = new FormData(form);
             const file = formData.get('pdfFile');
             const jobDescription = formData.get('jobDescription');
             const resptype = formData.get('resptype');
-
-            await uploadCV(file, jobDescription, resptype);
+    
+            try {
+                const response = await getSkillsList(file, jobDescription, resptype);
+                let responseText = await response.text();
+    
+                // Remove backticks, "json" label, and then parse JSON
+                responseText = responseText.replace(/^```json|```$/g, ''); 
+                const data = JSON.parse(responseText); // Now parse as JSON object
+                
+                console.log("data as object:", data); // Logs the JSON object for inspection
+                
+                const jobsResponse = await getJobsList(data.skills);
+                const jobsData = await jobsResponse.json();
+                
+                // Display job listings
+                const jobsListDiv = document.getElementById('jobs-list');
+                jobsListDiv.innerHTML = ''; // Clear previous job listings
+                for (const job of jobsData.jobsArr) {
+                    let newDiv = document.createElement('div');
+                    
+                    let titleDiv = document.createElement('div');
+                    titleDiv.textContent = job.title;
+    
+                    let companyDiv = document.createElement('div');
+                    companyDiv.textContent = job.company;
+    
+                    let descriptionDiv = document.createElement('div');
+                    descriptionDiv.textContent = job.description;
+    
+                    let urlLinkDiv = document.createElement('a');
+                    urlLinkDiv.href = job.urlLink;
+                    urlLinkDiv.textContent = "Job Link";
+                    urlLinkDiv.target = "_blank";
+    
+                    newDiv.appendChild(titleDiv);
+                    newDiv.appendChild(companyDiv);
+                    newDiv.appendChild(descriptionDiv);
+                    newDiv.appendChild(urlLinkDiv);
+    
+                    jobsListDiv.appendChild(newDiv);
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+    
             form.reset();
         });
     </script>
-
+    
+    
+    
 </body>
 
 </html>
