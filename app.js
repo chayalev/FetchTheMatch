@@ -259,7 +259,10 @@ app.post('/existingtexttopdf', async (req, res) => {
 
 //Search jobs on SerpApi based on skills and location
 async function searchJobs(skills, location) {
-    const apiKey = `${process.env.API_KEY}`;
+    const apiKey = "fa1ecbb3064b38f2ff60b9fe2f43777d3578d740c50b2f109ecc130f5a9b4af2";
+
+    console.log("skills: ", skills);
+    console.log("location:  ", location);
 
     try {
 
@@ -311,4 +314,98 @@ app.listen(3001, function () {
     console.log('My app is listening on port 3001!');
 });
 
+
+//=============================
+//In this part we envolve analyzing data from the jobs and from the CV files to predict the latest required skills
+//save data page
+import mongoose from 'mongoose';
+import { GeminiClient } from '@google-cloud/gemini';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const mongoAtlasUri = 'mongodb+srv://naamashvalb:leHnICQc9v91p649@cluster0.zoxge.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+mongoose.connect(mongoAtlasUri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log("Connected to MongoDB Atlas!");
+}).catch(err => {
+    console.error("Error connecting to MongoDB Atlas:", err);
+});
+
+const jobSchema = new mongoose.Schema({
+    keywords: [String]
+});
+
+const candidateSchema = new mongoose.Schema({
+    skills: [String]
+});
+
+const Job = mongoose.model('Job', jobSchema);
+const Candidate = mongoose.model('Candidate', candidateSchema);
+
+export async function saveJob(keywords) {
+    const job = new Job({ keywords });
+    await job.save();
+}
+
+export async function saveCandidate(skills) {
+    const candidate = new Candidate({ skills });
+    await candidate.save();
+}
+
+export async function analyzeSupplyAndDemand() {
+    const jobs = await Job.find();
+    const candidates = await Candidate.find();
+
+    const requiredSkills = new Map();
+    const existingSkills = new Map();
+
+    jobs.forEach(job => {
+        job.keywords.forEach(skill => {
+            requiredSkills.set(skill, (requiredSkills.get(skill) || 0) + 1);
+        });
+    });
+
+    candidates.forEach(candidate => {
+        candidate.skills.forEach(skill => {
+            existingSkills.set(skill, (existingSkills.get(skill) || 0) + 1);
+        });
+    });
+
+    const gapAnalysis = [];
+    requiredSkills.forEach((count, skill) => {
+        const supply = existingSkills.get(skill) || 0;
+        if (count > supply) {
+            gapAnalysis.push({ skill, demand: count, supply });
+        }
+    });
+
+    const recommendations = await generateRecommendations(gapAnalysis);
+    return recommendations;
+}
+
+const gemini = new GeminiClient({
+    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
+});
+
+export async function generateRecommendations(gapAnalysis) {
+    const prompt = `Analyze the following skill gaps and suggest training courses:\n${JSON.stringify(gapAnalysis)}`;
+    
+    const request = {
+        model: 'gemini-text-001',
+        prompt: prompt,
+        maxTokens: 100
+    };
+
+    try {
+        const [response] = await gemini.generateText(request);
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error generating recommendations:", error);
+        throw error;
+    }
+}
 

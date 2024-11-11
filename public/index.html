@@ -6,155 +6,286 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload PDF</title>
     <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+        /* Global Styles */
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        /* Form Styling */
+        .form-container {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #333;
         }
 
         form {
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
+        /* Input Styles */
         input[type="file"],
-        textarea {
-            margin-bottom: 10px;
+        textarea,
+        input[type="radio"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: #fafafa;
+            transition: border-color 0.3s ease;
         }
 
+        input[type="file"] {
+            cursor: pointer;
+        }
+
+        input[type="file"]:hover,
+        textarea:hover,
+        input[type="radio"]:hover {
+            border-color: #007BFF;
+        }
+
+        /* Textarea Specific */
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* Radio Button Section */
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .radio-group label {
+            font-size: 16px;
+        }
+
+        /* Button Styling */
         button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
+            padding: 14px 25px;
+            background-color: #007BFF;
+            color: #fff;
+            font-size: 16px;
             border: none;
             border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Cover Letter Section */
+        #cover-letter {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            min-height: 120px;
+            margin-top: 30px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        #btns-for-cover-letter {
+            display: none;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: space-between;
+        }
+
+        #btns-for-cover-letter button {
+            background-color: #28a745;
+            border-radius: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: white;
+            border: none;
+            transition: background-color 0.3s ease;
+        }
+
+        #btns-for-cover-letter button:hover {
+            background-color: #218838;
+        }
+
+        /* Job List Image Styling */
+        #jobs-img {
+            display: none;
+            margin-top: 20px;
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        h1 {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 36px;
+        color: #333;
+        text-align: center;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    h1::after {
+        content: "";
+        display: block;
+        width: 60px;
+        height: 3px;
+        background-color: #007BFF;
+        margin: 20px auto 0;
+    }
+
+    h1:hover {
+        color: #007BFF;
+        cursor: pointer;
+        transform: translateY(-5px);
+        transition: all 0.3s ease;
+    }
+
     </style>
 </head>
 
 <body>
 
-    <form id="pdf-form" enctype="multipart/form-data">
-        <div>
+    <div class="form-container">
+        <h1>Fetch The Match</h1>
+
+        <form id="pdf-form" enctype="multipart/form-data">
             <input type="file" name="pdfFile" accept=".pdf" required>
+
+            <textarea name="jobDescription" placeholder="Paste job description here (max 4000 characters)" maxlength="4000"></textarea>
+
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="resptype" value="aspdf" checked> PDF
+                </label>
+                <label>
+                    <input type="radio" name="resptype" value="astext"> Text
+                </label>
+            </div>
+
+            <button type="submit">Upload PDF</button>
+        </form>
+
+        <div id="cover-letter"></div>
+
+        <div id="btns-for-cover-letter">
+            <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button>
+            <button type="button" onclick="printCoverLetter()">Print Cover Letter</button>
+            <button onclick="showList()">Show jobs list</button>
         </div>
 
-        <div>
-            <textarea name="jobDescription" placeholder="Paste job description here (max 4000 characters)"
-                maxlength="4000"></textarea>
-        </div>
-
-        <div>
-            <label>
-                <input type="radio" name="resptype" value="aspdf" checked> PDF
-            </label>
-            <label>
-                <input type="radio" name="resptype" value="astext"> Text
-            </label>
-            <label>
-                <input type="radio" name="resptype" value="skillslist"> Search jobs
-            </label>
-
-        </div>
-
-        <button type="submit">Upload PDF</button>
-    </form>
-    <!-- <button type="button" onclick="fetchJobs()">Search for</button> -->
-    <div>
-        <div id="cover-letter">
-
-        </div>
-        <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button>
-        <button type="button" onclick="printCoverLetter()">Print Cover Letter</button>
+        <img id="jobs-img" src="../jobsList.png" alt="Job List Image" />
     </div>
-    <div id="jobs-list"></div>
+
     <script>
-        const getSkillsList = (file, jobDescription, resptype) => {
+        function copyToClipboard() {
+            const coverLetterText = document.getElementById('cover-letter').textContent;
+            navigator.clipboard.writeText(coverLetterText).then(() => {
+                alert("Cover letter copied to clipboard.");
+            }).catch((error) => {
+                console.error("Failed to copy text:", error);
+            });
+        }
+
+        function showList() {
+            document.getElementById('jobs-img').style.display = 'block';
+        }
+
+        function printCoverLetter() {
+            const printWindow = window.open('', '_blank');
+            const coverLetterText = document.getElementById('cover-letter').textContent;
+
+            printWindow.document.open();
+            printWindow.document.write(`
+                <html>
+                <head><title>Print Cover Letter</title></head>
+                <body>
+                    <pre>${coverLetterText}</pre>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        async function uploadCV(file, jobDescription, resptype) {
             const formData = new FormData();
             formData.append('pdfFile', file);
             formData.append('jobDescription', jobDescription);
             formData.append('resptype', resptype);
-    
-            return fetch('/uploadCV', {
-                method: 'POST',
-                body: formData,
-            });
-        };
-    
-        const getJobsList = (skills) => {
-            return fetch('/jobsFromSkillsListSerpApi', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ skills }) // Send skills array as JSON
-            });
-        };
-    
+
+            try {
+                const response = await fetch('/uploadCV', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (resptype === 'aspdf') {
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'CoverLetter.pdf';
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        URL.revokeObjectURL(url);
+                    } else {
+                        console.error("Failed to download PDF.");
+                    }
+                } else if (resptype === 'astext') {
+                    const data = await response.json();
+                    document.getElementById('cover-letter').textContent = data.content;
+                    document.getElementById('btns-for-cover-letter').style.display = 'flex';
+                }
+            } catch (error) {
+                console.error("Error uploading CV:", error);
+            }
+        }
+
         const form = document.getElementById('pdf-form');
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
-    
+
             const formData = new FormData(form);
             const file = formData.get('pdfFile');
             const jobDescription = formData.get('jobDescription');
             const resptype = formData.get('resptype');
-    
-            try {
-                const response = await getSkillsList(file, jobDescription, resptype);
-                let responseText = await response.text();
-    
-                // Remove backticks, "json" label, and then parse JSON
-                responseText = responseText.replace(/^```json|```$/g, ''); 
-                const data = JSON.parse(responseText); // Now parse as JSON object
-                
-                console.log("data as object:", data); // Logs the JSON object for inspection
-                
-                const jobsResponse = await getJobsList(data.skills);
-                const jobsData = await jobsResponse.json();
-                
-                // Display job listings
-                const jobsListDiv = document.getElementById('jobs-list');
-                jobsListDiv.innerHTML = ''; // Clear previous job listings
-                for (const job of jobsData.jobsArr) {
-                    let newDiv = document.createElement('div');
-                    
-                    let titleDiv = document.createElement('div');
-                    titleDiv.textContent = job.title;
-    
-                    let companyDiv = document.createElement('div');
-                    companyDiv.textContent = job.company;
-    
-                    let descriptionDiv = document.createElement('div');
-                    descriptionDiv.textContent = job.description;
-    
-                    let urlLinkDiv = document.createElement('a');
-                    urlLinkDiv.href = job.urlLink;
-                    urlLinkDiv.textContent = "Job Link";
-                    urlLinkDiv.target = "_blank";
-    
-                    newDiv.appendChild(titleDiv);
-                    newDiv.appendChild(companyDiv);
-                    newDiv.appendChild(descriptionDiv);
-                    newDiv.appendChild(urlLinkDiv);
-    
-                    jobsListDiv.appendChild(newDiv);
-                }
-            } catch (error) {
-                console.error("Error:", error);
-            }
-    
+
+            await uploadCV(file, jobDescription, resptype);
             form.reset();
         });
     </script>
-    
-    
-    
+
 </body>
 
 </html>
