@@ -56,6 +56,9 @@
             <label>
                 <input type="radio" name="resptype" value="astext"> Text
             </label>
+            <label>
+                <input type="radio" name="resptype" value="skillslist"> List of Skills
+            </label>
         </div>
 
         <button type="submit">Upload PDF</button>
@@ -109,7 +112,6 @@ function copyToClipboard() {
                 });
 
                 if (resptype === 'aspdf') {
-                    // Handle PDF response
                     if (response.ok) {
                         const blob = await response.blob();
                         const url = URL.createObjectURL(blob);
@@ -124,10 +126,8 @@ function copyToClipboard() {
                         console.error("Failed to download PDF.");
                     }
                 } else if (resptype === 'astext') {
-                    // Handle text response
                     const data = await response.json();
                     document.getElementById('cover-letter').textContent = data.content;
-                    //alert(data.message);
                 }
             } catch (error) {
                 console.error("Error uploading CV:", error);

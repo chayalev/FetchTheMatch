@@ -4,6 +4,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { GoogleAIFileManager } = require("@google/generative-ai/server");
 const { PDFDocument } = require("pdf-lib");
+const { PDFFile} = require('pdfkit');
 const express = require('express');
 const multer = require('multer');
 const jsPDF = require('jspdf');
@@ -93,9 +94,9 @@ app.get('/afterhello', async (req, res) => {
                     - Mention my relevant experiences and how they relate to the job description.
                     - Explain why I would be an excellent fit for this role.
                     - Conclude with a positive statement about my interest in the position and readiness to discuss further.
-
+                    - don't leave generic information in the text, like "[your name]", instand usethe informaion from the cv document.
                     The job description is as follows: ` +
-                  `${jobDescription}`
+                `${jobDescription}`
         },
     ]);
 
@@ -156,13 +157,36 @@ app.post('/uploadCV', uploadAndAttachPath, async (req, res) => {
 
 
     const jobDescription = theJob;
-    const prompt = "I am providing you with job description that I found online, you only have to read it and understand from it how to write for me a cover letter, Please create a cover letter for my resume based on my attached resume which fits the job offering, make sure to insert the correct job offering title and company in the letter";
+    let prompt = "";
+    const resptypeTemp = req.body.resptype;
+    if(resptypeTemp == "skillslist"){
+        prompt = `Extract the list of skills from the provided CV file and store them in an array called skills.
+        Skills could include programming languages, tools, frameworks, or other technical abilities. Please carefully analyze the document and identify the relevant skills.
+        Make sure to return a variable stored in the field result.skills`;
+
+    }
+    else {
+        prompt = `I am uploading my resume and a job description for a specific position. Please create a professional, personalized cover letter that aligns my skills and experience with the job requirements.
+
+        The cover letter should:
+        - Address the company and job title using the provided information or leave out these details if they are not available.
+        - Include a brief introduction about me, highlighting my key skills and background relevant to the job.
+        - Mention my relevant experiences and specifically align them with the job description.
+        - Avoid including placeholders or prompts like "[Platform where you saw the job posting]," "[your name]," or "[your address]". Instead, only use details from my resume or the job description.
+        - Conclude with a positive statement about my interest in the position and readiness to discuss further.
+
+        If any specific details are missing from my resume or the job description (like the platform where I found the job posting), leave them out without adding generic placeholders.
+      `;
+   
+    }          
+         
+    
 
     try {
         const result = await generateContentFromPDF(filePath, jobDescription, prompt);
-        console.log(result.response.text());
+        console.log("prompt:::::::::::::: ", prompt)
         //add option to return a pdf aspdf astext (switch(resptype))
-        switch(req.body.resptype) {
+        switch (req.body.resptype) {
             case 'aspdf':
                 // Here we need to take result.response.text() and export it to pdf
                 const pdfDoc = await PDFDocument.create();
@@ -184,16 +208,51 @@ app.post('/uploadCV', uploadAndAttachPath, async (req, res) => {
             case 'astext':
                 res.send({
                     content: result.response.text(),
-                 message: "File uploaded successfully"});
+                    message: "File uploaded successfully"
+                });
+            case 'skillslist':
+                res.send(result.response.text())
             default:
-                return res.status(400).send("Invalid response type specified.");
+                break;
         }
-        
+
     } catch (error) {
         console.error("Error generating content:", error);
         res.status(500).send("An error occurred while processing your request.");
     }
 
+});
+
+app.post('/existingtexttopdf', async (req, res) => {
+    try {
+        const { thetext } = req.body;
+
+        if (!thetext) {
+            return res.status(400).json({ error: 'Missing "thetext" field in request body' });
+        }
+
+        // Create a new PDF document
+        const doc = new PDFFile();
+
+        // Set response headers to indicate PDF content
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="generated.pdf"');
+
+        // Pipe the PDF into the response
+        doc.pipe(res);
+
+        // Add the text to the PDF
+        doc.text(thetext, {
+            align: 'left', // You can adjust alignment and other options
+            lineGap: 10
+        });
+
+        // Finalize the PDF and end the stream
+        doc.end();
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
+    }
 });
 
 
