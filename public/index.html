@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload PDF</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        form {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        input[type="file"],
+        textarea {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <form id="pdf-form" enctype="multipart/form-data">
+        <div>
+            <input type="file" name="pdfFile" accept=".pdf" required>
+        </div>
+
+        <div>
+            <textarea name="jobDescription" placeholder="Paste job description here (max 4000 characters)"
+                maxlength="4000"></textarea>
+        </div>
+
+        <div>
+            <label>
+                <input type="radio" name="resptype" value="aspdf" checked> PDF
+            </label>
+            <label>
+                <input type="radio" name="resptype" value="astext"> Text
+            </label>
+        </div>
+
+        <button type="submit">Upload PDF</button>
+    </form>
+    <div>
+    <div id="cover-letter">
+
+    </div>
+    <button type="button" onclick="copyToClipboard()">Copy to Clipboard</button>
+<button type="button" onclick="printCoverLetter()">Print Cover Letter"></button>
+</div>
+
+    <script>
+
+function copyToClipboard() {
+        const coverLetterText = document.getElementById('cover-letter').textContent;
+        navigator.clipboard.writeText(coverLetterText).then(() => {
+            alert("Cover letter copied to clipboard.");
+        }).catch((error) => {
+            console.error("Failed to copy text:", error);
+        });
+    }
+
+    // Print content
+    function printCoverLetter() {
+        const printWindow = window.open('', '_blank');
+        const coverLetterText = document.getElementById('cover-letter').textContent;
+        
+        printWindow.document.open();
+        printWindow.document.write(`
+            <html>
+            <head><title>Print Cover Letter</title></head>
+            <body>
+                <pre>${coverLetterText}</pre>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+        async function uploadCV(file, jobDescription, resptype) {
+            const formData = new FormData();
+            formData.append('pdfFile', file);
+            formData.append('jobDescription', jobDescription);
+            formData.append('resptype', resptype);
+
+            try {
+                const response = await fetch('/uploadCV', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (resptype === 'aspdf') {
+                    // Handle PDF response
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = 'CoverLetter.pdf';
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        URL.revokeObjectURL(url);
+                    } else {
+                        console.error("Failed to download PDF.");
+                    }
+                } else if (resptype === 'astext') {
+                    // Handle text response
+                    const data = await response.json();
+                    document.getElementById('cover-letter').textContent = data.content;
+                    //alert(data.message);
+                }
+            } catch (error) {
+                console.error("Error uploading CV:", error);
+            }
+        }
+
+        const form = document.getElementById('pdf-form');
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+            const file = formData.get('pdfFile');
+            const jobDescription = formData.get('jobDescription');
+            const resptype = formData.get('resptype');
+
+            await uploadCV(file, jobDescription, resptype);
+            form.reset();
+        });
+    </script>
+
+</body>
+
+</html>
